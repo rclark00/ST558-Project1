@@ -1,0 +1,12 @@
+---
+title: "ST 558 Project 1"
+subtitle: Ryan Clark
+format: html
+---
+
+## Intro
+
+In this project we will query the Public Use Microdata Sample (PUMS) Census API. 
+
+## Part 1: Data Processing
+
