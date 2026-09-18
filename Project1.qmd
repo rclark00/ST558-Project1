@@ -1,6 +1,6 @@
 ---
 title: "ST 558 Project 1"
-subtitle: Ryan Clark
+author: Ryan Clark
 format: html
 ---
 
@@ -9,4 +9,45 @@ format: html
 In this project we will query the Public Use Microdata Sample (PUMS) Census API. 
 
 ## Part 1: Data Processing
+
+Every year surveyed by the Census API has its own `variables.json` endpoint that lays out each variable used and their respective definitions. While there is plenty of overlap year-to-year, important differences exist that we must account for when parsing variable values from the JSON files. In this first step, we build a function that retrieves these files, extracts only the variables relevant to our analysis, and stores the result so we can reference it later.
+
+<!-- Mention years?  -->
+<!-- x -->
+```{r}
+# Function to `GET` a PUMS `variables.json` endpoint 
+get_pums_variables <- function(url, vars_to_keep) {
+  var_info <- httr::GET(url)  # Contact API 
+  parsed_vars <- jsonlite::fromJSON(rawToChar(var_info$content))  # Parse the raw JSON
+  parsed_vars$variables[vars_to_keep]
+}
+
+# Variables found in all four years
+common_vars <- c("AGEP", "GASP", "GRPIP", "JWAP", "JWDP", "JWMNP",
+                  "PWGTP", "FER", "HHL", "SCH", "SCHL", "SEX",
+                  "REGION", "DIVISION")
+
+# ST/STATE variable changes by year, so append to each year's variable list
+vars_2021 <- c(common_vars, "ST")
+vars_2022 <- c(common_vars, "ST")
+vars_2023 <- c(common_vars, "STATE")
+vars_2024 <- c(common_vars, "STATE")
+
+# URLs
+url_2021 <- "https://api.census.gov/data/2021/acs/acs1/pums/variables.json"
+url_2022 <- "https://api.census.gov/data/2022/acs/acs1/pums/variables.json"
+url_2023 <- "https://api.census.gov/data/2023/acs/acs1/pums/variables.json"
+url_2024 <- "https://api.census.gov/data/2024/acs/acs1/pums/variables.json"
+
+# Build one list per year, then merge into a single list
+pums_variables <- list(
+  "2021" = get_pums_variables(url_2021, vars_2021),
+  "2022" = get_pums_variables(url_2022, vars_2022),
+  "2023" = get_pums_variables(url_2023, vars_2023),
+  "2024" = get_pums_variables(url_2024, vars_2024)
+)
+
+# Save list as an .rds in the `data` folder
+saveRDS(pums_variables, file = "data/pums_variables.rds")
+```
 
