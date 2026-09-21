@@ -6,14 +6,12 @@ format: html
 
 ## Intro
 
-In this project we will query the Public Use Microdata Sample (PUMS) Census API. 
+In this project we will query the Public Use Microdata Sample (PUMS) Census API. This API provides psuedo person-level data from the American Community Survey. We will focus on retrieving and summarizing data from four survey years: 2021, 2022, 2023 and 2024. 
 
 ## Part 1: Data Processing
 
 Every year surveyed by the Census API has its own `variables.json` endpoint that lays out each variable used and their respective definitions. While there is plenty of overlap year-to-year, important differences exist that we must account for when parsing variable values from the JSON files. In this first step, we build a function that retrieves these files, extracts only the variables relevant to our analysis, and stores the result so we can reference it later.
 
-<!-- Mention years?  -->
-<!-- x -->
 ```{r}
 # Function to `GET` a PUMS `variables.json` endpoint 
 get_pums_variables <- function(url, vars_to_keep) {
@@ -50,4 +48,81 @@ pums_variables <- list(
 # Save list as an .rds in the `data` folder
 saveRDS(pums_variables, file = "data/pums_variables.rds")
 ```
+
+
+```{r}
+#| include: false
+# API key
+census_key <- Sys.getenv("CENSUS_API_KEY")
+```
+
+(placeholder text)
+
+```{r}
+# TESTING LOGIC AND STRUCTURE
+# Function to query the PUMS API, return a parsed tibble. 
+query_pums_data <- function(year = 2024,
+                             numeric_vars = "AGEP",
+                             categorical_vars = "SEX",
+                             geography = "State",
+                             geo_subset = NULL) {
+
+  # Validate year
+  valid_years <- c(2021, 2022, 2023, 2024)
+  if (length(year) != 1 || !(year %in% valid_years)) {  # Not exactly 1 year OR not in list
+    stop("Error: `year` must be 2021, 2022, 2023, or 2024.")
+  }
+
+  # Validate numeric variables
+  valid_numeric <- c("AGEP", "GASP", "GRPIP", "JWAP", "JWDP", "JWMNP")
+  if (length(numeric_vars) < 1) {  # Empty input
+    stop("Error: At least one numeric variable (other than PWGTP) must be specified.")
+  }
+  if (!all(numeric_vars %in% valid_numeric)) {  # Checking if any vars are invalid
+    stop("Error: Invalid numeric variable(s) provided. Valid options are: AGEP, GASP, GRPIP, JWAP, JWDP, and JWMNP.")
+  }
+  # PWGTP always returned
+  numeric_vars <- unique(c(numeric_vars, "PWGTP"))
+
+  # Validate categorical variables
+  valid_categorical <- c("FER", "HHL", "SCH", "SCHL", "SEX")
+  if (length(categorical_vars) < 1) {  # Empty input
+    stop("Error: At least one categorical variable must be specified.")
+  }
+  if (!all(categorical_vars %in% valid_categorical)) {  # Checking if any vars are invalid
+    stop("Error: Invalid categorical variable(s) provided. Valide options are: FER, HHL, SCH, SCHL, and SEX.")
+  }
+
+  # Validate geography level
+  valid_geo <- c("Region", "Division", "State")
+  if (length(geography) != 1 || !(geography %in% valid_geo)) {  # Not exactly 1 level OR not in list
+    stop("Error: `geography` must be exactly Region, Division, or State.")
+  }
+
+  # Geo_subset default
+  default_geo_subset <- list(Region = "3", Division = "5", State = "37")
+  if (is.null(geo_subset)) {  # Empty input
+    geo_subset <- default_geo_subset[[geography]] # Picks the correct default value based on the chosen geo
+  }
+  # NOTE: validate geo_subset against .rds file here?
+
+  # Return inputs to verify
+  list(
+    year = year,
+    numeric_vars = numeric_vars,
+    categorical_vars = categorical_vars,
+    geography = geography,
+    geo_subset = geo_subset
+  )
+}
+```
+
+
+
+
+
+
+
+
+
 
