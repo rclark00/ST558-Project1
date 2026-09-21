@@ -59,13 +59,12 @@ census_key <- Sys.getenv("CENSUS_API_KEY")
 (placeholder text)
 
 ```{r}
-# TESTING LOGIC AND STRUCTURE
-# Function to query the PUMS API, return a parsed tibble. 
+# Function to query the PUMS API (year, variables, and geography) and return a parsed tibble. 
 query_pums_data <- function(year = 2024,
-                             numeric_vars = "AGEP",
-                             categorical_vars = "SEX",
-                             geography = "State",
-                             geo_subset = NULL) {
+                            numeric_vars = "AGEP",
+                            categorical_vars = "SEX",
+                            geography = "State",
+                            geo_subset = NULL) {
 
   # Validate year
   valid_years <- c(2021, 2022, 2023, 2024)
@@ -104,16 +103,60 @@ query_pums_data <- function(year = 2024,
   if (is.null(geo_subset)) {  # Empty input
     geo_subset <- default_geo_subset[[geography]] # Picks the correct default value based on the chosen geo
   }
-  # NOTE: validate geo_subset against .rds file here?
 
-  # Return inputs to verify
-  list(
-    year = year,
-    numeric_vars = numeric_vars,
-    categorical_vars = categorical_vars,
-    geography = geography,
-    geo_subset = geo_subset
+  geo_for_name <- tolower(geography)  # Convert to lowercase for URL syntax
+  geo_var_name <- switch(geography,  # Col name to return
+    "Region" = "REGION",
+    "Division" = "DIVISION",
+    "State" = if (year %in% c(2021, 2022)) "ST" else "STATE"
   )
+
+  # String for the URL `for=`
+  geo_value <- if (identical(geo_subset, "all")) "*"  # All values (API syntax)
+               else geo_subset  # User's specific choice
+
+  # Variables list
+  get_vars <- unique(c(numeric_vars, categorical_vars, geo_var_name))
+
+  # URL
+  base_url <- paste0("https://api.census.gov/data/", year, "/acs/acs1/pums")
+  url <- paste0(
+    base_url,
+    "?get=", paste(get_vars, collapse = ","),
+    "&for=", geo_for_name, ":", geo_value,
+    "&key=", census_key
+  )
+
+  # Contact website
+  resp <- httr::GET(url)
+  raw_data <- jsonlite::fromJSON(rawToChar(resp$content))
+
+  # Initialize tibble
+  pums_tibble <- pums_matrix_to_tibble(raw_data)
+
+  # Load RDS and convert year to char
+  variable_info <- readRDS("data/pums_variables.rds")
+  year_info <- variable_info[[as.character(year)]]
+
+  # Convert numeric variables to num or POSIXct
+  time_vars <- c("JWAP", "JWDP")  # Arrival/departure times
+  for (var in numeric_vars) {
+    if (var %in% time_vars) {  # is the variable time-coded?
+      code_labels <- unlist(year_info[[var]]$values$item)  # Table of codes and labels
+      # PLACEHOLDER Helper function
+    } else {
+      pums_tibble[[var]] <- as.numeric(pums_tibble[[var]]) # Otherwise numeric
+    }
+  }
+
+  # Convert categorical variables to labeled factors
+  for (var in categorical_vars) {
+    code_labels <- unlist(year_info[[var]]$values$item)
+      # PLACEHOLDER Helper function
+  }
+
+  class(pums_tibble) <- c("census", class(pums_tibble))
+  pums_tibble
 }
 ```
 
