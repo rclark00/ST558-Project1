@@ -56,6 +56,52 @@ saveRDS(pums_variables, file = "data/pums_variables.rds")
 census_key <- Sys.getenv("CENSUS_API_KEY")
 ```
 
+(placeholder text)... The variable dictionary in variables.json from the RDS has fixed-width of three characters but the API doesn't always return this so we must insert leading zeros where applicable to use the dictionary. The exception is the "N/A" code which is simply "0".
+
+```{r}
+# Helper function: Handling the time-coded variables (JWAP/JWDP)
+parse_pums_time <- function(codes, code_labels) {
+  padded_codes <- ifelse(codes == "0", "0",  # If 0, keep (it's the N/A code)
+                         formatC(as.integer(codes), width = 3, flag = "0"))  # Otherwise convert int and insert 0s to get fixed-width
+
+  labels <- code_labels[padded_codes]  # Match padded code to dictionary label
+
+  # Logical vector using language ("to") to identify time-range observations
+  has_range <- !is.na(labels) & grepl(" to ", labels, fixed = TRUE)
+
+  # Isolate times
+  starts <- trimws(gsub("\\.", "", sub(" to .*$", "", labels[has_range])))  # Before "to"
+  ends   <- trimws(gsub("\\.", "", sub("^.*? to ", "", labels[has_range])))  # After "to"
+
+  # Convert string times to datetime objects
+  start_times <- lubridate::parse_date_time(starts, orders = "IMp", tz = "UTC")  
+  end_times   <- lubridate::parse_date_time(ends,   orders = "IMp", tz = "UTC")
+
+  # Compute midpoint time
+  mid_times <- start_times + (end_times - start_times) / 2
+
+  # Initialize empty datetime vector
+  result <- as.POSIXct(rep(NA, length(labels)), tz = "UTC")
+  # Fill it in with midpoint values
+  result[has_range] <- mid_times
+  # Return vector
+  result
+}
+```
+
+(placeholder text)... We will use this function to grab the raw codes of these categorical variables and replace them with their respective labels. And in the process, we'll convert this character vector into a factor while maintaining the coded order. This function will be called for every categorical variable we encounter.
+
+```{r}
+# Helper function: Replaces categorical raw character codes with corresponding label
+pums_to_factor <- function(codes, code_labels) {
+  ordered_codes  <- names(code_labels)[order(as.numeric(names(code_labels)))]  # Numerical ordering of codes
+  ordered_labels <- unname(code_labels[ordered_codes])  # Labels ordered by their codes
+  
+  # Return categorical factor
+  factor(unname(code_labels[codes]), levels = ordered_labels)
+}
+```
+
 (placeholder text)
 
 ```{r}
@@ -127,12 +173,14 @@ query_pums_data <- function(year = 2024,
     "&key=", census_key
   )
 
-  # Contact website
+  # Contact API endpoint
   resp <- httr::GET(url)
   raw_data <- jsonlite::fromJSON(rawToChar(resp$content))
 
   # Initialize tibble
-  pums_tibble <- pums_matrix_to_tibble(raw_data)
+  pums_tibble <- raw_data |>
+  tibble::as_tibble(.name_repair = "minimal") |>  # Prevent auto-naming
+  janitor::row_to_names(row_number = 1)  # First row is col headers, removed from data
 
   # Load RDS and convert year to char
   variable_info <- readRDS("data/pums_variables.rds")
@@ -143,7 +191,7 @@ query_pums_data <- function(year = 2024,
   for (var in numeric_vars) {
     if (var %in% time_vars) {  # is the variable time-coded?
       code_labels <- unlist(year_info[[var]]$values$item)  # Table of codes and labels
-      # PLACEHOLDER Helper function
+      pums_tibble[[var]] <- parse_pums_time(pums_tibble[[var]], code_labels)  # Helper function
     } else {
       pums_tibble[[var]] <- as.numeric(pums_tibble[[var]]) # Otherwise numeric
     }
@@ -151,8 +199,8 @@ query_pums_data <- function(year = 2024,
 
   # Convert categorical variables to labeled factors
   for (var in categorical_vars) {
-    code_labels <- unlist(year_info[[var]]$values$item)
-      # PLACEHOLDER Helper function
+    code_labels <- unlist(year_info[[var]]$values$item)  # Table of codes and labels
+    pums_tibble[[var]] <- pums_to_factor(pums_tibble[[var]], code_labels) # Helper function
   }
 
   class(pums_tibble) <- c("census", class(pums_tibble))
