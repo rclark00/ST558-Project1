@@ -105,7 +105,7 @@ pums_to_factor <- function(codes, code_labels) {
 (placeholder text)
 
 ```{r}
-# Function to query the PUMS API (year, variables, and geography) and return a parsed tibble. 
+# Function to query the PUMS API (year, variables, and geography) then return a parsed tibble. 
 query_pums_data <- function(year = 2024,
                             numeric_vars = "AGEP",
                             categorical_vars = "SEX",
@@ -203,12 +203,59 @@ query_pums_data <- function(year = 2024,
     pums_tibble[[var]] <- pums_to_factor(pums_tibble[[var]], code_labels) # Helper function
   }
 
+  # Adding the "census" class to the tibble
   class(pums_tibble) <- c("census", class(pums_tibble))
+  
+  # Return tibble
   pums_tibble
 }
 ```
 
+(placeholder text)... The function will take a vector of years, not simply one year... The tibble returned will have a "year" column identifying the source year.
 
+```{r}
+# Function to query multiple data years then return a tibble.
+query_pums_multi_year <- function(years,  # Vector of years (unlike query_pums_data)
+                                  numeric_vars = "AGEP",
+                                  categorical_vars = "SEX",
+                                  geography = "State",
+                                  geo_subset = NULL) {
+
+  # Loop over each element of `years`, applies function to assemble list of tibbles
+  results <- lapply(years, function(yr) {
+    result <- query_pums_data(  # A year's raw tibble
+      year = yr,
+      numeric_vars = numeric_vars,
+      categorical_vars = categorical_vars,
+      geography = geography,
+      geo_subset = geo_subset
+    )
+
+    # Changing state variable names to all be "STATE" (2021/2022)
+    if ("ST" %in% names(result)) {
+      names(result)[names(result) == "ST"] <- "STATE"
+    }
+
+    # Record which survey year this data came from
+    result$year <- yr
+
+    # Strip the "census" class before combining (for dplyr)
+    class(result) <- class(result)[class(result) != "census"]
+    
+    # Return a year's tibble
+    result
+  })
+  
+  # Combine (vertically)
+  combined <- dplyr::bind_rows(results)
+
+  # Adding back the "census" class to the combined result
+  class(combined) <- c("census", class(combined))
+
+  # Return tibble
+  combined
+}
+```
 
 
 
