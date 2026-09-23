@@ -1,14 +1,19 @@
 ---
 title: "ST 558 Project 1"
 author: Ryan Clark
+date: 2026-09-30
+abstract: |
+  The purpose of this report is to ... 
 format: html
 ---
 
-## Intro
+# Intro
 
 In this project we will query the Public Use Microdata Sample (PUMS) Census API. This API provides psuedo person-level data from the American Community Survey. We will focus on retrieving and summarizing data from four survey years: 2021, 2022, 2023 and 2024. 
 
-## Part 1: Data Processing
+# Part 1: Data Processing
+
+## Parsing Variable Values
 
 Every year surveyed by the Census API has its own `variables.json` endpoint that lays out each variable used and their respective definitions. While there is plenty of overlap year-to-year, important differences exist that we must account for when parsing variable values from the JSON files. In this first step, we build a function that retrieves these files, extracts only the variables relevant to our analysis, and stores the result so we can reference it later.
 
@@ -55,6 +60,8 @@ saveRDS(pums_variables, file = "data/pums_variables.rds")
 # API key
 census_key <- Sys.getenv("CENSUS_API_KEY")
 ```
+
+## Parsing API Data
 
 (placeholder text)... The variable dictionary in variables.json from the RDS has fixed-width of three characters but the API doesn't always return this so we must insert leading zeros where applicable to use the dictionary. The exception is the "N/A" code which is simply "0".
 
@@ -211,6 +218,8 @@ query_pums_data <- function(year = 2024,
 }
 ```
 
+## Combining Years
+
 (placeholder text)... The function will take a vector of years, not simply one year... The tibble returned will have a "year" column identifying the source year.
 
 ```{r}
@@ -257,10 +266,22 @@ query_pums_multi_year <- function(years,  # Vector of years (unlike query_pums_d
 }
 ```
 
+(placeholder text)
 
+# Part 2: Writing a Generic Function for Summarizing
 
+(placeholder text)
 
+## Generic Functions
 
+In R there are functions that use a class-specific method to operate on their arguments. That is, how the function handles the argument provided is based on the class of said argument. These are known as *generic functions*. For example, `summary()` on a numeric vector and `summary()` on a linear model (`lm` object) behave entirely different because they're running different underlying functions — `summary.default()` versus `summary.lm()`. `Plot()` is another such example.
 
+Recall in Part 1, every tibble returned by `query_pums_data()` and `query_pums_multi_year()` was tagged with `class(x) <- c("census", class(x))`. Therefore, if we write functions named `summary.census()` and `plot.census()`, R will automatically call these when a user runs `summary()` or `plot()` on a query result. This should be more efficient for generating the desired results.
 
+## Numeric Summaries
 
+(placeholder text)
+
+## Graphical Summaries
+
+(placeholder text)... We've seen how `summary()` is generic function above. Another generic function is `plot()`.
