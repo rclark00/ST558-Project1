@@ -280,7 +280,62 @@ Recall in Part 1, every tibble returned by `query_pums_data()` and `query_pums_m
 
 ## Numeric Summaries
 
-(placeholder text)
+(placeholder text)... Summary method for the "census" tibbles. This function will produce means and standard deviations for our numeric variables, excluding the time variables. Since we want to return a list, I decided to go with a two-part list: a mean/SD variable and a categorical variable.
+
+```{r}
+# Census summary function
+summary.census <- function(object, numeric_vars = NULL, categorical_vars = NULL, ...) {
+  # Tibble col names
+  all_names <- names(object)
+
+  # Grabbing desired numeric vars (no weight or year)
+  eligible_numeric <- setdiff(all_names[sapply(object, is.numeric)], c("PWGTP", "year"))
+
+  # Grabbing categorical vars (factor columns, plus year if present)
+  eligible_categorical <- all_names[sapply(object, is.factor)]
+  if ("year" %in% all_names) {
+    eligible_categorical <- c(eligible_categorical, "year")  # Appends year by name
+  }
+
+  # Default to above eligible variables if the user didn't specify
+  if (is.null(numeric_vars)) numeric_vars <- eligible_numeric
+  if (is.null(categorical_vars)) categorical_vars <- eligible_categorical
+
+  # Validate variable names inputted by user
+  if (!all(numeric_vars %in% all_names)) {
+    stop("Error: `numeric_vars` contains a variable not found in the data.")
+  }
+  if (!all(categorical_vars %in% all_names)) {
+    stop("Error: `categorical_vars` contains a variable not found in the data.")
+  }
+
+  weights <- object$PWGTP  # Survey weight
+
+  # Weighted mean/sd for each numeric variable
+  numeric_summary <- lapply(numeric_vars, function(var) {  # Applies function across numeric_vars and collects results into a list
+    values <- object[[var]]  # Get each variable col vector
+    # Mean
+    weighted_mean <- sum(values * weights) / sum(weights)
+    # SD
+    weighted_sd <- sqrt(sum(values^2 * weights) / sum(weights) - weighted_mean^2)
+    # Return vector
+    c(mean = weighted_mean, sd = weighted_sd)
+  })
+  # Attaches variable names to the numeric list
+  names(numeric_summary) <- numeric_vars
+
+  # Counts for each categorical variable
+  categorical_summary <- lapply(categorical_vars, function(var) {
+    table(object[[var]])
+  })
+  # Attaches variable names to the categorical list
+  names(categorical_summary) <- categorical_vars
+
+  # Combines the two lists into one and returns it
+  list(numeric = numeric_summary, categorical = categorical_summary)
+}
+```
+
 
 ## Graphical Summaries
 
