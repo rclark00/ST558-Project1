@@ -188,7 +188,8 @@ query_pums_data <- function(year = 2024,
   pums_tibble <- raw_data |>
   tibble::as_tibble(.name_repair = "minimal") |>  # Prevent auto-naming
   janitor::row_to_names(row_number = 1)  # First row is col headers, removed from data
-
+  pums_tibble[[geo_for_name]] <- NULL  # Drop the geography duplicate column
+  
   # Load RDS and convert year to char
   variable_info <- readRDS("data/pums_variables.rds")
   year_info <- variable_info[[as.character(year)]]
@@ -216,6 +217,31 @@ query_pums_data <- function(year = 2024,
   # Return tibble
   pums_tibble
 }
+```
+
+Let's show some examples of how this querying process might look for a user.
+
+This example will not use default variables. We will use `GASP` (gas cost) and `JWMNP` (travel time to work) as numeric variables, `SCHL` (educational attainment) as a categorical variable, and the Pacific census division (division code `"9"`) for the 2023 survey year.
+
+
+```{r}
+# Example Query 
+example_single_year <- query_pums_data(
+  year = 2023,
+  numeric_vars = c("GASP", "JWMNP"),
+  categorical_vars = "SCHL",
+  geography = "Division",
+  geo_subset = "9"
+)
+example_single_year
+```
+
+Notice that `PWGTP` is printed even though we only specified `GASP` and `JWMNP`. This is because we append `PWGTP` to the `numeric_vars` list so it's always returned. `SCHL` is a factor with its levels pulled from the 2023 variable dictionary instead of raw numeric codes, and the `DIVISION` column reflects the geography we subset on.
+
+We also setup our function to validate the user inputs and print an error message when appropriate. For example, requesting a survey year outside 2021–2024 yields the following:
+
+```{r, error = TRUE}
+query_pums_data(year = 2020)
 ```
 
 ## Combining Years
