@@ -303,10 +303,10 @@ summary.census <- function(object, numeric_vars = NULL, categorical_vars = NULL,
 
   # Validate variable names inputted by user
   if (!all(numeric_vars %in% all_names)) {
-    stop("Error: `numeric_vars` contains a variable not found in the data.")
+    stop("Error: `numeric_vars` not found.")
   }
   if (!all(categorical_vars %in% all_names)) {
-    stop("Error: `categorical_vars` contains a variable not found in the data.")
+    stop("Error: `categorical_vars` not found.")
   }
 
   weights <- object$PWGTP  # Survey weight
@@ -339,4 +339,37 @@ summary.census <- function(object, numeric_vars = NULL, categorical_vars = NULL,
 
 ## Graphical Summaries
 
-(placeholder text)... We've seen how `summary()` is generic function above. Another generic function is `plot()`.
+(placeholder text)... As we mentioned above, `plot()` is another generic function we can use for data visualizations. (Comment on how they treat census data type)
+
+For this plot function the user will input one categorical variable and one numerical variable. With that, we will generate a boxplot of the numeric variable at the levels of the categorical variable. 
+
+```{r}
+library(ggplot2)
+
+# Census plot function
+plot.census <- function(x, categorical_var, numeric_var, ...) {
+
+  # Validate variable names inputted by user
+  if (!(categorical_var %in% names(x))) {
+    stop("Error: `categorical_var` not found.")
+  }
+  if (!(numeric_var %in% names(x))) {
+    stop("Error: `numeric_var` not found.")
+  }
+
+  # Plot
+  ggplot(x, aes(x = get(categorical_var), 
+                y = get(numeric_var), 
+                weight = PWGTP)) +
+    geom_boxplot() +
+    labs(x = categorical_var, y = numeric_var)
+}
+```
+
+
+
+
+
+
+
+
