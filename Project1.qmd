@@ -292,7 +292,19 @@ query_pums_multi_year <- function(years,  # Vector of years (unlike query_pums_d
 }
 ```
 
-(placeholder text)
+Let's look at an example of combining several years into one tibble. We can use this as an opportunity to check the state variable change (`ST` to `STATE`).
+
+```{r}
+# Example Query
+example_multi_year <- query_pums_multi_year(
+  years = c(2021, 2022, 2023),
+  numeric_vars = "AGEP",
+  categorical_vars = "SEX"
+)
+example_multi_year
+```
+
+We have a `year` column to identify which survey year each observation came from. The geography column is consistently named `STATE` throughout, which is what we intended. Without renaming `ST` to `STATE` we would have two geography columns (`ST` and `STATE`).
 
 # Part 2: Writing a Generic Function for Summarizing
 
