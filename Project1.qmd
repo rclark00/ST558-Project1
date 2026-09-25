@@ -464,4 +464,5 @@ Once again, we can infer that our `plot.census()` function was utilized based on
 
 # Conclusion
 
-(placeholder)
+In this project we built a set of functions that allow the user to query the Public Use Microdata Sample Census API between the years 2021-2024, select which data they want, then summarize and plot this data. Part 1 was designed to build the API call, validate the user's inputs, and return a tidy tibble with a `"census"` class. In Part 2 we took advantage of this class setting by defining our own summarizing and plot functions, which their generic counterparts route to because of that class attribute. Both methods account for the survey weight `PWGTP`, so the results reflect the population rather than the sampled rows. We also went through examples along the way to demonstrate code functionality. For instance, we observed that North Carolina's age distribution was very stable from 2021 to 2023, and that females living there tend to be a few years older than males. The project could be improved by allowing the user to choose from a list of plot types that they want to visualize their selected data in.
+
