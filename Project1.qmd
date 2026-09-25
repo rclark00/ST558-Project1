@@ -158,7 +158,7 @@ query_pums_data <- function(year = 2024,
   }
 
   # Geo_subset default
-  default_geo_subset <- list(Region = "3", Division = "5", State = "37")
+  default_geo_subset <- list(Region = "3", Division = "5", State = "37")  # North Carolina
   if (is.null(geo_subset)) {  # Empty input
     geo_subset <- default_geo_subset[[geography]] # Picks the correct default value based on the chosen geo
   }
@@ -419,13 +419,36 @@ plot.census <- function(x, categorical_var, numeric_var, ...) {
   }
 
   # Plot
-  ggplot(x, aes(x = get(categorical_var), 
+  ggplot(x, aes(x = as.factor(get(categorical_var)), 
                 y = get(numeric_var), 
                 weight = PWGTP)) +
     geom_boxplot() +
     labs(x = categorical_var, y = numeric_var)
 }
 ```
+
+As we saw with `summary()`, calling `plot()` on `example_multi_year` dispatches to `plot.census()` automatically. For this next example we'll plot `year` as the categorical variable and `AGEP` (age) as the numeric variable.
+
+```{r}
+#Plot example
+plot(example_multi_year, categorical_var = "year", numeric_var = "AGEP")
+```
+
+By default, `plot()` would've drawn scatterplots but since the argument was a census type it instead used our `plot.census()` to draw weighted boxplots. While these boxplots appear identical, they are built from different datasets. We can confirm this with the code below.
+
+```{r}
+# Checking the data that builds the previous example
+example_multi_year |>
+  dplyr::group_by(year) |>
+  dplyr::summarize(
+    rows = dplyr::n(),
+    population = sum(PWGTP),
+    weighted_mean_age = sum(AGEP * PWGTP) / sum(PWGTP),
+    max_age = max(AGEP)
+  )
+```
+
+We can see that these boxplots are built from different data weighted by `PWGTP`. We might explain the similarities by suggesting that year-to-year age distributions in one state (in this case North Carolina) are relatively stable. 
 
 
 
