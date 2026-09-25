@@ -427,10 +427,10 @@ plot.census <- function(x, categorical_var, numeric_var, ...) {
 }
 ```
 
-As we saw with `summary()`, calling `plot()` on `example_multi_year` dispatches to `plot.census()` automatically. For this next example we'll plot `year` as the categorical variable and `AGEP` (age) as the numeric variable.
+As we saw with `summary()`, calling `plot()` on `example_multi_year` dispatches to `plot.census()` automatically. For this next example we'll continue to use `example_multi_year`, plotting `year` as the categorical variable and `AGEP` (age) as the numeric variable. 
 
 ```{r}
-#Plot example
+# Plot example
 plot(example_multi_year, categorical_var = "year", numeric_var = "AGEP")
 ```
 
@@ -450,10 +450,18 @@ example_multi_year |>
 
 We can see that these boxplots are built from different data weighted by `PWGTP`. We might explain the similarities by suggesting that year-to-year age distributions in one state (in this case North Carolina) are relatively stable. 
 
+Let's do one more plot example, still building off of the previous multi-year query. This time we'll change the categorical variable to `SEX`, and we'll try sprucing up the plot a bit. We should be able to change the aesthetics because `plot.census()` returns a ggplot object that we can add layers to without modifying the function.
 
+```{r}
+# Plot example
+plot(example_multi_year, categorical_var = "SEX", numeric_var = "AGEP") +
+  aes(fill = SEX) +
+  guides(fill = "none") +
+  coord_flip()
+```
 
+Once again, we can infer that our `plot.census()` function was utilized based on the output. Combining all three surveys (2021-2023), the age distributions for males and females in North Carolina are quite similar. Women have a slightly older median and quartiles, although the whiskers are approximately equal between the sexes. It is a known fact that women live longer than men, which may be driving these differences. This plot limits what we can see at the older ages because the whiskers simply display the highest age recorded for both sexes.
 
+# Conclusion
 
-
-
-
+(placeholder)
