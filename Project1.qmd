@@ -101,11 +101,17 @@ parse_pums_time <- function(codes, code_labels) {
 ```{r}
 # Helper function: Replaces categorical raw character codes with corresponding label
 pums_to_factor <- function(codes, code_labels) {
+  # Width used by this variable's dictionary keys, excluding "0" (N/A)
+  pad_width <- max(nchar(setdiff(names(code_labels), "0")))
+
+  # Add leading zeros; except "0" (N/A) is never padded
+  padded_codes <- ifelse(codes == "0", "0", formatC(as.integer(codes), width = pad_width, flag = "0"))
+  
   ordered_codes  <- names(code_labels)[order(as.numeric(names(code_labels)))]  # Numerical ordering of codes
   ordered_labels <- unname(code_labels[ordered_codes])  # Labels ordered by their codes
   
   # Return categorical factor
-  factor(unname(code_labels[codes]), levels = ordered_labels)
+  factor(unname(code_labels[padded_codes]), levels = ordered_labels)
 }
 ```
 
@@ -374,6 +380,23 @@ summary.census <- function(object, numeric_vars = NULL, categorical_vars = NULL,
 }
 ```
 
+We shall now test some examples while building off of the previous examples from Part 1. Recall that `example_single_year` has the `"census"` class, so calling the generic `summary()` function on it should implement our `summary.census()`. 
+
+```{r}
+# Example summary
+summary(example_single_year)
+```
+
+Clearly from the mean/sd and count output, `summary()` called our `summary.census()` function. With no additional arguments, it defaults to every eligible variable: `GASP` and `JWMNP` get weighted means and standard deviations, and `SCHL` gets counted by level. `DIVISION` is not one of the categorical variables `summary.census()` recognizes so it correctly gets skipped.
+
+Let's return to `example_multi_year` to check whether `year` is treated as categorical, as intended.
+
+```{r}
+# Example summary
+summary(example_multi_year)
+```
+
+We can see that results from the years 2021-2023 are displayed as they should. And `year` appears as its own categorical breakdown alongside `SEX`. While `year` is stored as a plain numeric column, it's counted rather than averaged.
 
 ## Graphical Summaries
 
