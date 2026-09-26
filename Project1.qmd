@@ -3,19 +3,19 @@ title: "ST 558 Project 1"
 author: Ryan Clark
 date: 2026-09-30
 abstract: |
-  The purpose of this report is to ... 
+  The purpose of this report is to write R functions that query the PUMS Census API and summarize and plot the returned data.
 format: html
 ---
 
 # Intro
 
-In this project we will query the Public Use Microdata Sample (PUMS) Census API. This API provides psuedo person-level data from the American Community Survey. We will focus on retrieving and summarizing data from four survey years: 2021, 2022, 2023 and 2024. 
+In this project we will query the Public Use Microdata Sample (PUMS) Census API. This API provides pseudo person-level data from the American Community Survey. We will focus on retrieving, summarizing, and plotting data from four survey years: 2021, 2022, 2023 and 2024. In Part 1 we write functions to query the API and return tibbles. In Part 2 we write custom `summary()` and `plot()` functions to generate results.
 
 # Part 1: Data Processing
 
 ## Parsing Variable Values
 
-Every year surveyed by the Census API has its own `variables.json` endpoint that lays out each variable used and their respective definitions. While there is plenty of overlap year-to-year, important differences exist that we must account for when parsing variable values from the JSON files. In this first step, we build a function that retrieves these files, extracts only the variables relevant to our analysis, and stores the result so we can reference it later.
+Each survey year from the Census API has its own `variables.json` endpoint that lays out each variable used and their respective definitions. While there is plenty of overlap year-to-year, important differences exist that we must account for when parsing variable values from the JSON files. In this first step, we build a function that retrieves these files, extracts only the variables relevant to our analysis, and stores the result so we can reference it later.
 
 ```{r}
 # Function to `GET` a PUMS `variables.json` endpoint 
@@ -63,7 +63,11 @@ census_key <- Sys.getenv("CENSUS_API_KEY")
 
 ## Parsing API Data
 
-(placeholder text)... The variable dictionary in variables.json from the RDS has fixed-width of three characters but the API doesn't always return this so we must insert leading zeros where applicable to use the dictionary. The exception is the "N/A" code which is simply "0".
+With our variable dictionaries saved, we can move on to querying the actual data. Before writing the main querying function, we introduce two helper functions to handle the conversions it will need. 
+
+The first helper handles the time variables `JWAP` (time of arrival at work) and `JWDP` (time of departure for work). The API returns these as codes for time ranges, not actual clock time values. Therefore, our helper looks up each code's label, divides it into a start and an end time string, converts both to time values with `lubridate`, and returns the midpoint of the range. Codes whose label isn't a time range (e.g. "N/A" code) are returned as `NA`.
+
+Importantly, the dictionary codes for these two variables have a fixed-width of three characters but the API drops leading zeros so we must pad them where applicable (e.g. `"7"` to `"007"`). The exception is the "N/A" code which is simply `"0"`.
 
 ```{r}
 # Helper function: Handling the time-coded variables (JWAP/JWDP)
@@ -96,7 +100,9 @@ parse_pums_time <- function(codes, code_labels) {
 }
 ```
 
-(placeholder text)... We will use this function to grab the raw codes of these categorical variables and replace them with their respective labels. And in the process, we'll convert this character vector into a factor while maintaining the coded order. This function will be called for every categorical variable we encounter.
+The second helper handles our categorical variables. Like the time variables above, the categorical variables are delivered as raw codes from the API, so the helper replaces them with their corresponding labels (accounting for year-to-year differences). It then converts the result into a factor whose levels mimic the order of the original codes. 
+
+These codes have the same leading-zero problem as the time variables, though without a fixed-width and not quite as pervasive. So we must manually grab the proper width each time before padding. This function will be called for every categorical variable requested by the user.
 
 ```{r}
 # Helper function: Replaces categorical raw character codes with corresponding label
@@ -115,7 +121,7 @@ pums_to_factor <- function(codes, code_labels) {
 }
 ```
 
-(placeholder text)
+Now that both helpers have been established, we can write the main query function that will utilize them. This function lets the user choose what variables to request from the API, ensures these are valid choices, and returns a tibble. Note that we are only parsing a specific subset of the entire list of variables (see code below). If the inputs pass all checks, then the API URL is built and our API key makes the request. From there, the function converts the JSON into a cleaned tibble with a `"census"` class.
 
 ```{r}
 # Function to query the PUMS API (year, variables, and geography) then return a parsed tibble. 
@@ -229,7 +235,6 @@ Let's show some examples of how this querying process might look for a user.
 
 This example will not use default variables. We will use `GASP` (gas cost) and `JWMNP` (travel time to work) as numeric variables, `SCHL` (educational attainment) as a categorical variable, and the Pacific census division (division code `"9"`) for the 2023 survey year.
 
-
 ```{r}
 # Example Query 
 example_single_year <- query_pums_data(
@@ -242,7 +247,7 @@ example_single_year <- query_pums_data(
 example_single_year
 ```
 
-Notice that `PWGTP` is printed even though we only specified `GASP` and `JWMNP`. This is because we append `PWGTP` to the `numeric_vars` list so it's always returned. `SCHL` is a factor with its levels pulled from the 2023 variable dictionary instead of raw numeric codes, and the `DIVISION` column reflects the geography we subset on.
+See that `PWGTP` is printed even though we only specified `GASP` and `JWMNP`. This is because we append `PWGTP` to the `numeric_vars` list so it's always returned. `SCHL` is a factor with its levels pulled from the 2023 variable dictionary instead of raw numeric codes, and the `DIVISION` column reflects the geography we subset on.
 
 We also setup our function to validate the user inputs and print an error message when appropriate. For example, requesting a survey year outside 2021–2024 yields the following:
 
@@ -252,7 +257,7 @@ query_pums_data(year = 2020)
 
 ## Combining Years
 
-(placeholder text)... The function will take a vector of years, not simply one year... The tibble returned will have a "year" column identifying the source year.
+Notice that the query function above only accepts one year as an argument. Clearly this is not ideal, so we expand on this by building another query function below that can take a vector of years. This new query still relies on the previous function to go through each year's call. Our query below accounts for variable differences between years, makes a `year` column identifying the source year for a given row, and then stacks the results into a tibble while ultimately preserving the `"census"` attribute.
 
 ```{r}
 # Function to query multiple data years then return a tibble.
@@ -298,7 +303,7 @@ query_pums_multi_year <- function(years,  # Vector of years (unlike query_pums_d
 }
 ```
 
-Let's look at an example of combining several years into one tibble. We can use this as an opportunity to check the state variable change (`ST` to `STATE`).
+Let's look at an example of combining several years (2021-2023) into one tibble. We can use this as an opportunity to check the state variable change (`ST` to `STATE`).
 
 ```{r}
 # Example Query
@@ -314,7 +319,7 @@ We have a `year` column to identify which survey year each observation came from
 
 # Part 2: Writing a Generic Function for Summarizing
 
-(placeholder text)
+We've now established that we can query and combine PUMS data, so next we attempt to summarize this data and eventually visualize it. To make our summaries convenient to use, we will take advantage of the `"census"` class we've been defining our tibbles with. I will elaborate on more on this below. 
 
 ## Generic Functions
 
@@ -324,7 +329,7 @@ Recall in Part 1, every tibble returned by `query_pums_data()` and `query_pums_m
 
 ## Numeric Summaries
 
-(placeholder text)... Summary method for the "census" tibbles. This function will produce means and standard deviations for our numeric variables, excluding the time variables. Since we want to return a list, I decided to go with a two-part list: a mean/SD variable and a categorical variable.
+We now construct our `summary.census()` function. This function will produce weighted means and standard deviations for numeric variables, excluding the time variables, and a count of rows at each level of each categorical variable. `PWGTP` is the weight and informs us how many people each row represents. Since we want to return a list, I decided to go with a two-part list: a mean/SD variable and a categorical variable. The user can choose which variables to summarize.
 
 ```{r}
 # Census summary function
@@ -400,9 +405,7 @@ We can see that results from the years 2021-2023 are displayed as they should. A
 
 ## Graphical Summaries
 
-(placeholder text)... As we mentioned above, `plot()` is another generic function we can use for data visualizations. (Comment on how they treat census data type)
-
-For this plot function the user will input one categorical variable and one numerical variable. With that, we will generate a boxplot of the numeric variable at the levels of the categorical variable. 
+As we mentioned above, `plot()` is another generic function we can use for data visualizations. So we can write a `plot.census()` function for our `"census"` tibbles. The user will input one categorical variable and one numerical variable. With that, we will generate a boxplot of the numeric variable at the levels of the categorical variable. As with the numeric summaries, the rows are weighted by `PWGTP`, which means the plots will reflect the population
 
 ```{r}
 library(ggplot2)
@@ -419,7 +422,7 @@ plot.census <- function(x, categorical_var, numeric_var, ...) {
   }
 
   # Plot
-  ggplot(x, aes(x = as.factor(get(categorical_var)), 
+  ggplot(x, aes(x = as.factor(get(categorical_var)),  # When x=year we need it to be factor for plotting
                 y = get(numeric_var), 
                 weight = PWGTP)) +
     geom_boxplot() +
@@ -434,7 +437,7 @@ As we saw with `summary()`, calling `plot()` on `example_multi_year` dispatches 
 plot(example_multi_year, categorical_var = "year", numeric_var = "AGEP")
 ```
 
-By default, `plot()` would've drawn scatterplots but since the argument was a census type it instead used our `plot.census()` to draw weighted boxplots. While these boxplots appear identical, they are built from different datasets. We can confirm this with the code below.
+By default, `plot()` would've drawn scatterplots but since the argument was a `"census"` type it instead used our `plot.census()` to draw weighted boxplots. While these boxplots appear identical, they are built from different datasets. We can confirm this with the code below.
 
 ```{r}
 # Checking the data that builds the previous example
