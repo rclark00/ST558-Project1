@@ -11,7 +11,4 @@
 # Quarto & R Markdown
 /.quarto/
 *_cache/
-*_files/
-# Exception: Don't ignore my figures folder
-   !docs/Project1_files/
 **/*.quarto_ipynb
